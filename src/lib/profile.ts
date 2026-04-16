@@ -3,10 +3,14 @@ import { join } from "node:path";
 import { CLAUDE_DIR, PROFILES_DIR } from "./paths";
 
 const NAME_RE = /^[a-zA-Z0-9_-]+$/;
+export const RESERVED_PROFILE = "default";
 
 export function validateName(name: string): void {
   if (!NAME_RE.test(name)) {
     throw new Error(`Invalid profile name "${name}". Use only alphanumeric, hyphen, underscore.`);
+  }
+  if (name === RESERVED_PROFILE) {
+    throw new Error(`"${RESERVED_PROFILE}" is a reserved profile name.`);
   }
 }
 

@@ -3,7 +3,7 @@
 import { create } from "./commands/create";
 import { list } from "./commands/list";
 import { del } from "./commands/delete";
-import { profileDir, profileExists } from "./lib/profile";
+import { profileDir, profileExists, RESERVED_PROFILE } from "./lib/profile";
 import { bold, dim, error } from "./lib/ui";
 
 
@@ -100,12 +100,13 @@ async function main() {
   }
 
   const { profile, claudeArgs } = parsed;
+  const resolvedProfile = profile === RESERVED_PROFILE ? null : profile;
 
-  if (profile && !(await profileExists(profile))) {
-    error(`Profile "${profile}" not found. Run \`ccp create ${profile}\` first.`);
+  if (resolvedProfile && !(await profileExists(resolvedProfile))) {
+    error(`Profile "${resolvedProfile}" not found. Run \`ccp create ${resolvedProfile}\` first.`);
   }
 
-  launchClaude(profile, claudeArgs);
+  launchClaude(resolvedProfile, claudeArgs);
 }
 
 main().catch((e) => {
