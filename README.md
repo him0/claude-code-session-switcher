@@ -6,13 +6,14 @@ Each profile gets its own config directory (`CLAUDE_CONFIG_DIR`), so you can mai
 
 ## Install
 
-Requires [Bun](https://bun.sh).
+```bash
+bunx him0/ccprofile
+```
+
+or
 
 ```bash
-git clone https://github.com/him0/ccprofile.git
-cd ccprofile
-bun install
-bun link
+npx him0/ccprofile
 ```
 
 ## Usage
