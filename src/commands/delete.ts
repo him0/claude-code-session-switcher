@@ -1,4 +1,4 @@
-import { profileExists, removeProfile } from "../lib/profile";
+import { sessionExists, removeSession } from "../lib/session";
 import { error, success } from "../lib/ui";
 import { createInterface } from "node:readline";
 
@@ -13,19 +13,19 @@ async function confirm(message: string): Promise<boolean> {
 }
 
 export async function del(name: string | undefined, force: boolean) {
-  if (!name) error("Usage: ccp delete <name>");
-  if (!(await profileExists(name))) {
-    error(`Profile "${name}" not found.`);
+  if (!name) error("Usage: ccss delete <name>");
+  if (!(await sessionExists(name))) {
+    error(`Session "${name}" not found.`);
   }
 
   if (!force) {
-    const ok = await confirm(`Delete profile "${name}"?`);
+    const ok = await confirm(`Delete session "${name}"?`);
     if (!ok) {
       console.log("Cancelled.");
       return;
     }
   }
 
-  await removeProfile(name);
-  success(`Profile "${name}" deleted.`);
+  await removeSession(name);
+  success(`Session "${name}" deleted.`);
 }

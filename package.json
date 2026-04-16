@@ -1,11 +1,11 @@
 {
-  "name": "ccprofile",
-  "version": "0.1.1",
-  "description": "Switch between multiple Claude Code CLI profiles",
+  "name": "claude-code-session-switcher",
+  "version": "0.2.0",
+  "description": "Switch Claude Code login sessions while sharing settings and history",
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "ccp": "./src/index.ts"
+    "ccss": "./src/index.ts"
   },
   "private": true,
   "devDependencies": {

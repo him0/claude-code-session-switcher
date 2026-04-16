@@ -1,11 +1,11 @@
-import { listProfiles, RESERVED_PROFILE } from "../lib/profile";
+import { listSessions, RESERVED_SESSION } from "../lib/session";
 import { dim } from "../lib/ui";
 
 export async function list() {
-  const profiles = await listProfiles();
+  const sessions = await listSessions();
 
-  console.log(`  ${RESERVED_PROFILE} ${dim("(default)")}`);
-  for (const name of profiles) {
+  console.log(`  ${RESERVED_SESSION} ${dim("(default)")}`);
+  for (const name of sessions) {
     console.log(`  ${name}`);
   }
 }

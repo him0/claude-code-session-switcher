@@ -3,70 +3,112 @@
 import { create } from "./commands/create";
 import { list } from "./commands/list";
 import { del } from "./commands/delete";
-import { profileDir, profileExists, RESERVED_PROFILE } from "./lib/profile";
+import { sessionDir, sessionExists, RESERVED_SESSION } from "./lib/session";
 import { bold, dim, error } from "./lib/ui";
 
 
 const HELP = `
-${bold("ccp")} - Claude Code Profile switcher
+${bold("ccss")} - Claude Code Session Switcher
 
-Switch login sessions while sharing settings and history across profiles.
+Switch Claude Code login sessions while sharing settings and history.
 
 ${bold("Usage:")}
-  ccp                       Launch claude (default ~/.claude)
-  ccp -P <profile>          Launch claude with a profile
-  ccp <command> [args]
+  ccss <command> [args]
+  ccss -p <session> exec <cmd> [args...]
 
 ${bold("Commands:")}
-  create <name>     Create a new profile
-  list              List all profiles
-  delete <name>     Delete a profile ${dim("(--force to skip prompt)")}
+  create <name>                Create a new session
+  list                         List all sessions
+  delete <name>                Delete a session ${dim("(--force to skip prompt)")}
+  -p <name> exec <cmd> [args]  Run <cmd> with the session's CLAUDE_CONFIG_DIR
 
 ${bold("Examples:")}
-  ccp create work         Create "work" profile
-  ccp -P work             Launch claude as "work"
-  ccp -P work --resume    Extra args are passed to claude
+  ccss create work                     ${dim("# Create \"work\" session")}
+  ccss -p work exec claude             ${dim("# Run claude as \"work\"")}
+  ccss -p work exec claude --resume    ${dim("# Extra args pass through to claude")}
+  ccss -p work exec bash               ${dim("# Run any command with the session env")}
 `.trim();
 
-const SUBCOMMANDS = new Set(["create", "list", "ls", "delete", "rm", "help", "--help", "-h"]);
+type Parsed =
+  | { kind: "help" }
+  | { kind: "create"; name: string | undefined }
+  | { kind: "list" }
+  | { kind: "delete"; name: string | undefined; force: boolean }
+  | { kind: "exec"; session: string; cmd: string; cmdArgs: string[] }
+  | { kind: "error"; message: string };
 
-function parseArgs(argv: string[]): { profile: string | null; claudeArgs: string[] } | { subcommand: string; subArgs: string[] } {
+function parseArgs(argv: string[]): Parsed {
   const args = argv.slice(2);
 
-  if (args.length === 0) {
-    return { profile: null, claudeArgs: [] };
-  }
+  if (args.length === 0) return { kind: "help" };
 
-  if (SUBCOMMANDS.has(args[0])) {
-    return { subcommand: args[0], subArgs: args.slice(1) };
-  }
-
-  let profile: string | null = null;
-  const claudeArgs: string[] = [];
+  let session: string | null = null;
   let i = 0;
-
   while (i < args.length) {
-    if ((args[i] === "-P" || args[i] === "--profile") && i + 1 < args.length) {
-      profile = args[i + 1];
+    const a = args[i];
+    if ((a === "-p" || a === "--profile") && i + 1 < args.length) {
+      session = args[i + 1];
       i += 2;
     } else {
-      claudeArgs.push(args[i]);
-      i++;
+      break;
     }
   }
 
-  return { profile, claudeArgs };
+  const rest = args.slice(i);
+  if (rest.length === 0) {
+    if (session !== null) {
+      return { kind: "error", message: "Missing subcommand. Did you mean `ccss -p <name> exec <cmd>`?" };
+    }
+    return { kind: "help" };
+  }
+
+  const sub = rest[0];
+  const subArgs = rest.slice(1);
+
+  switch (sub) {
+    case "help":
+    case "--help":
+    case "-h":
+      return { kind: "help" };
+
+    case "create":
+      return { kind: "create", name: subArgs.find((a) => !a.startsWith("-")) };
+
+    case "list":
+    case "ls":
+      return { kind: "list" };
+
+    case "delete":
+    case "rm": {
+      const force = subArgs.includes("--force") || subArgs.includes("-f");
+      const name = subArgs.find((a) => !a.startsWith("-"));
+      return { kind: "delete", name, force };
+    }
+
+    case "exec": {
+      if (session === null) {
+        return { kind: "error", message: "`exec` requires a session: `ccss -p <name> exec <cmd>`" };
+      }
+      if (subArgs.length === 0) {
+        return { kind: "error", message: "Usage: ccss -p <name> exec <cmd> [args...]" };
+      }
+      return { kind: "exec", session, cmd: subArgs[0], cmdArgs: subArgs.slice(1) };
+    }
+
+    default:
+      return { kind: "error", message: `Unknown command: "${sub}". Run \`ccss --help\`.` };
+  }
 }
 
-function launchClaude(profile: string | null, claudeArgs: string[]) {
-  const env = profile
-    ? { ...process.env, CLAUDE_CONFIG_DIR: profileDir(profile) }
+function launchWithSession(session: string | null, cmd: string, cmdArgs: string[]) {
+  const env = session
+    ? { ...process.env, CLAUDE_CONFIG_DIR: sessionDir(session) }
     : process.env;
 
-  const escaped = claudeArgs.map((a) => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
-  const cmd = escaped ? `claude ${escaped}` : "claude";
+  const quote = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
+  const escaped = [cmd, ...cmdArgs].map(quote).join(" ");
   const shell = process.env.SHELL || "zsh";
-  const proc = Bun.spawn([shell, "-ic", cmd], {
+  const proc = Bun.spawn([shell, "-ic", escaped], {
     stdio: ["inherit", "inherit", "inherit"],
     env,
   });
@@ -77,36 +119,31 @@ function launchClaude(profile: string | null, claudeArgs: string[]) {
 async function main() {
   const parsed = parseArgs(process.argv);
 
-  if ("subcommand" in parsed) {
-    const { subcommand, subArgs } = parsed;
-    const hasForce = subArgs.includes("--force") || subArgs.includes("-f");
-    const arg1 = subArgs.find((a) => !a.startsWith("-"));
+  switch (parsed.kind) {
+    case "help":
+      console.log(HELP);
+      return;
 
-    switch (subcommand) {
-      case "create":
-        return create(arg1);
-      case "list":
-      case "ls":
-        return list();
-      case "delete":
-      case "rm":
-        return del(arg1, hasForce);
-      case "help":
-      case "--help":
-      case "-h":
-        console.log(HELP);
-        return;
+    case "error":
+      error(parsed.message);
+
+    case "create":
+      return create(parsed.name);
+
+    case "list":
+      return list();
+
+    case "delete":
+      return del(parsed.name, parsed.force);
+
+    case "exec": {
+      const resolved = parsed.session === RESERVED_SESSION ? null : parsed.session;
+      if (resolved && !(await sessionExists(resolved))) {
+        error(`Session "${resolved}" not found. Run \`ccss create ${resolved}\` first.`);
+      }
+      return launchWithSession(resolved, parsed.cmd, parsed.cmdArgs);
     }
   }
-
-  const { profile, claudeArgs } = parsed;
-  const resolvedProfile = profile === RESERVED_PROFILE ? null : profile;
-
-  if (resolvedProfile && !(await profileExists(resolvedProfile))) {
-    error(`Profile "${resolvedProfile}" not found. Run \`ccp create ${resolvedProfile}\` first.`);
-  }
-
-  launchClaude(resolvedProfile, claudeArgs);
 }
 
 main().catch((e) => {
