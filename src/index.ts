@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import pkg from "../package.json" with { type: "json" };
 import { create } from "./commands/create";
 import { list } from "./commands/list";
 import { del } from "./commands/delete";
@@ -8,33 +9,39 @@ import { bold, dim, error } from "./lib/ui";
 
 
 const HELP = `
-${bold("ccss")} - Claude Code Session Switcher
+${bold("ccss")} ${dim(`v${pkg.version}`)} - Claude Code Session Switcher
 
 Switch Claude Code login sessions while sharing settings and history.
 
 ${bold("Usage:")}
   ccss <command> [args]
-  ccss -p <session> exec <cmd> [args...]
+  ccss [-s <session>] exec <cmd> [args...]
 
 ${bold("Commands:")}
-  create <name>                Create a new session
-  list                         List all sessions
-  delete <name>                Delete a session ${dim("(--force to skip prompt)")}
-  -p <name> exec <cmd> [args]  Run <cmd> with the session's CLAUDE_CONFIG_DIR
+  create <name>                   Create a new session
+  list                            List all sessions
+  delete <name>                   Delete a session ${dim("(--force to skip prompt)")}
+  [-s <name>] exec <cmd> [args]   Run <cmd>; ${dim("-s sets CLAUDE_CONFIG_DIR, omit for default")}
+
+${bold("Options:")}
+  -v, --version                   Print version
+  -h, --help                      Show this help
 
 ${bold("Examples:")}
   ccss create work                     ${dim("# Create \"work\" session")}
-  ccss -p work exec claude             ${dim("# Run claude as \"work\"")}
-  ccss -p work exec claude --resume    ${dim("# Extra args pass through to claude")}
-  ccss -p work exec bash               ${dim("# Run any command with the session env")}
+  ccss -s work exec claude             ${dim("# Run claude as \"work\"")}
+  ccss -s work exec claude --resume    ${dim("# Extra args pass through to claude")}
+  ccss exec claude                     ${dim("# Run claude with default session")}
+  ccss -s work exec bash               ${dim("# Run any command with the session env")}
 `.trim();
 
 type Parsed =
   | { kind: "help" }
+  | { kind: "version" }
   | { kind: "create"; name: string | undefined }
   | { kind: "list" }
   | { kind: "delete"; name: string | undefined; force: boolean }
-  | { kind: "exec"; session: string; cmd: string; cmdArgs: string[] }
+  | { kind: "exec"; session: string | null; cmd: string; cmdArgs: string[] }
   | { kind: "error"; message: string };
 
 function parseArgs(argv: string[]): Parsed {
@@ -42,11 +49,13 @@ function parseArgs(argv: string[]): Parsed {
 
   if (args.length === 0) return { kind: "help" };
 
+  if (args[0] === "-v" || args[0] === "--version") return { kind: "version" };
+
   let session: string | null = null;
   let i = 0;
   while (i < args.length) {
     const a = args[i];
-    if ((a === "-p" || a === "--profile") && i + 1 < args.length) {
+    if ((a === "-s" || a === "--session") && i + 1 < args.length) {
       session = args[i + 1];
       i += 2;
     } else {
@@ -57,7 +66,7 @@ function parseArgs(argv: string[]): Parsed {
   const rest = args.slice(i);
   if (rest.length === 0) {
     if (session !== null) {
-      return { kind: "error", message: "Missing subcommand. Did you mean `ccss -p <name> exec <cmd>`?" };
+      return { kind: "error", message: "Missing subcommand. Did you mean `ccss -s <name> exec <cmd>`?" };
     }
     return { kind: "help" };
   }
@@ -86,11 +95,8 @@ function parseArgs(argv: string[]): Parsed {
     }
 
     case "exec": {
-      if (session === null) {
-        return { kind: "error", message: "`exec` requires a session: `ccss -p <name> exec <cmd>`" };
-      }
       if (subArgs.length === 0) {
-        return { kind: "error", message: "Usage: ccss -p <name> exec <cmd> [args...]" };
+        return { kind: "error", message: "Usage: ccss [-s <name>] exec <cmd> [args...]" };
       }
       return { kind: "exec", session, cmd: subArgs[0], cmdArgs: subArgs.slice(1) };
     }
@@ -122,6 +128,10 @@ async function main() {
   switch (parsed.kind) {
     case "help":
       console.log(HELP);
+      return;
+
+    case "version":
+      console.log(pkg.version);
       return;
 
     case "error":
