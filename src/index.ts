@@ -10,9 +10,11 @@ import { bold, dim, error } from "./lib/ui";
 const HELP = `
 ${bold("ccp")} - Claude Code Profile switcher
 
+Switch login sessions while sharing settings and history across profiles.
+
 ${bold("Usage:")}
   ccp                       Launch claude (default ~/.claude)
-  ccp -p <profile>          Launch claude with a profile
+  ccp -P <profile>          Launch claude with a profile
   ccp <command> [args]
 
 ${bold("Commands:")}
@@ -21,9 +23,9 @@ ${bold("Commands:")}
   delete <name>     Delete a profile ${dim("(--force to skip prompt)")}
 
 ${bold("Examples:")}
-  ccp create work       Create "work" profile
-  ccp -p work           Launch claude as "work"
-  ccp -p work -p work   All args after profile are passed to claude
+  ccp create work         Create "work" profile
+  ccp -P work             Launch claude as "work"
+  ccp -P work --resume    Extra args are passed to claude
 `.trim();
 
 const SUBCOMMANDS = new Set(["create", "list", "ls", "delete", "rm", "help", "--help", "-h"]);
@@ -44,7 +46,7 @@ function parseArgs(argv: string[]): { profile: string | null; claudeArgs: string
   let i = 0;
 
   while (i < args.length) {
-    if ((args[i] === "-p" || args[i] === "--profile") && i + 1 < args.length) {
+    if ((args[i] === "-P" || args[i] === "--profile") && i + 1 < args.length) {
       profile = args[i + 1];
       i += 2;
     } else {

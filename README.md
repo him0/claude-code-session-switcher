@@ -2,7 +2,7 @@
 
 Switch between multiple [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI profiles.
 
-Each profile gets its own config directory (`CLAUDE_CONFIG_DIR`), so you can maintain separate settings, credentials, and conversation history per context (e.g. work vs personal).
+Each profile maintains its own login session while sharing settings and conversation history with your default `~/.claude`. Switch between different accounts without losing your customizations.
 
 ## Install
 
@@ -20,7 +20,7 @@ npx him0/ccprofile
 
 ```
 ccp                       Launch Claude Code (default ~/.claude)
-ccp -p <profile>          Launch Claude Code with a named profile
+ccp -P <profile>          Launch Claude Code with a named profile
 ccp <command> [args]
 ```
 
@@ -39,10 +39,10 @@ ccp <command> [args]
 ccp create work
 
 # Launch Claude Code with that profile
-ccp -p work
+ccp -P work
 
 # Pass additional arguments to Claude Code
-ccp -p work --resume
+ccp -P work --resume
 
 # List profiles
 ccp list
@@ -53,7 +53,7 @@ ccp delete work
 
 ## How it works
 
-Profiles are stored under `~/.config/ccprofile/profiles/`. Each profile is a symlink to `~/.claude` at creation time. When launching with `-p <profile>`, ccp sets `CLAUDE_CONFIG_DIR` to the profile directory and spawns `claude`.
+Profiles are stored under `~/.config/ccprofile/profiles/`. Each profile is a symlink to `~/.claude` at creation time, so settings and conversation history are shared across all profiles. When launching with `-P <profile>`, ccp sets `CLAUDE_CONFIG_DIR` to the profile directory and spawns `claude` — only the login session is separated.
 
 ## License
 
