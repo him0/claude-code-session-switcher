@@ -7,6 +7,18 @@ Each named session is a symlink to `~/.claude`, so settings and conversation his
 ## Install
 
 ```bash
+bun install -g him0/claude-code-session-switcher
+```
+
+or
+
+```bash
+npm install -g him0/claude-code-session-switcher
+```
+
+## Run without installing
+
+```bash
 bunx him0/claude-code-session-switcher
 ```
 
