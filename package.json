@@ -1,6 +1,6 @@
 {
   "name": "ccprofile",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Switch between multiple Claude Code CLI profiles",
   "module": "src/index.ts",
   "type": "module",
