@@ -4,19 +4,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish:
-    name: Publish GitHub Release
+  prepare:
+    name: Prepare
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      skip: ${{ steps.check-release.outputs.skip }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Get version
@@ -40,16 +39,82 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  build:
+    name: Build ${{ matrix.asset }}
+    needs: prepare
+    if: needs.prepare.outputs.skip != 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            asset: ccss-linux-x64
+          - os: ubuntu-24.04-arm
+            target: bun-linux-arm64
+            asset: ccss-linux-arm64
+          - os: macos-13
+            target: bun-darwin-x64
+            asset: ccss-darwin-x64
+          - os: macos-14
+            target: bun-darwin-arm64
+            asset: ccss-darwin-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build binary
+        run: bun build ./src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.asset }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          retention-days: 1
+
+  publish:
+    name: Publish GitHub Release
+    needs: [prepare, build]
+    if: needs.prepare.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
       - name: Create GitHub Release
-        if: steps.check-release.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
+          tag_name: v${{ needs.prepare.outputs.version }}
+          name: v${{ needs.prepare.outputs.version }}
           body: |
             ## What's Changed
 
             See [CHANGELOG.md](./CHANGELOG.md) for details.
+          files: dist/*
           draft: false
           prerelease: false
         env:
