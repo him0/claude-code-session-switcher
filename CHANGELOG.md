@@ -1,5 +1,11 @@
 # claude-code-session-switcher
 
+## 0.2.5
+
+### Patch Changes
+
+- e577970: Actually fix the macOS arm64 binary launch issue. The previous ad-hoc codesign step failed in CI with `invalid or unsupported format for signature` because bun's `--compile` output embeds a broken partial signature that `codesign -f` cannot overwrite. Strip it first with `codesign --remove-signature`, then apply the ad-hoc signature.
+
 ## 0.2.4
 
 ### Patch Changes
