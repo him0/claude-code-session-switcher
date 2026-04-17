@@ -1,6 +1,6 @@
 {
   "name": "claude-code-session-switcher",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Switch Claude Code login sessions while sharing settings and history",
   "module": "src/index.ts",
   "type": "module",
