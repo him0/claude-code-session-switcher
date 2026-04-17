@@ -1,0 +1,48 @@
+name: Release Binaries
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            asset: ccss-linux-x64
+          - os: ubuntu-24.04-arm
+            target: bun-linux-arm64
+            asset: ccss-linux-arm64
+          - os: macos-13
+            target: bun-darwin-x64
+            asset: ccss-darwin-x64
+          - os: macos-14
+            target: bun-darwin-arm64
+            asset: ccss-darwin-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build binary
+        run: bun build ./src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.asset }}
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "dist/${{ matrix.asset }}" --clobber
