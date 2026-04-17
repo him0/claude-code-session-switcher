@@ -7,26 +7,12 @@ Each named session is a symlink to `~/.claude`, so settings and conversation his
 ## Install
 
 ```bash
-bun install -g him0/claude-code-session-switcher
+curl -fsSL https://raw.githubusercontent.com/him0/claude-code-session-switcher/main/install.sh | sh
 ```
 
-or
+The installer downloads the prebuilt binary for your platform from the latest GitHub Release and installs it to `~/.local/bin/ccss`. Override the destination with `CCSS_INSTALL_DIR`, or pin a version with `CCSS_VERSION=vX.Y.Z`.
 
-```bash
-npm install -g him0/claude-code-session-switcher
-```
-
-## Run without installing
-
-```bash
-bunx him0/claude-code-session-switcher
-```
-
-or
-
-```bash
-npx him0/claude-code-session-switcher
-```
+Supported targets: `linux-x64`, `linux-arm64`, `darwin-arm64` (Apple Silicon).
 
 ## Usage
 
